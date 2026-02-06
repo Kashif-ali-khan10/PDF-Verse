@@ -6,14 +6,15 @@ const PDFDocument = require('pdf-lib');
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
-router.get('/add-page-number', (req, res) => {
-  res.render('addpagenumber');
-});
-
 router.post('/add-page-number', upload.single('pdfFile'), async (req, res) => {
   try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No PDF file uploaded.' });
+    }
+
     const pdfDoc = await PDFDocument.PDFDocument.load(req.file.buffer);
     const font = await pdfDoc.embedFont(PDFDocument.StandardFonts.HelveticaBold);
+    
     let fontSize;
     switch (req.body.size) {
       case 'small':
@@ -40,27 +41,22 @@ router.post('/add-page-number', upload.single('pdfFile'), async (req, res) => {
           x = width - 100;
           y = height - 50;
           break;
-
         case 'top-middle':
           x = width / 2;
           y = height - 50;
           break;
-
         case 'bottom-right':
           x = width - 100;
           y = 50;
           break;
-
         case 'bottom-middle':
           x = width / 2;
           y = 50;
           break;
-
         case 'bottom-left':
           x = 100;
           y = 50;
           break;
-
         case 'top-left':
         default:
           x = 100;
@@ -79,14 +75,19 @@ router.post('/add-page-number', upload.single('pdfFile'), async (req, res) => {
     }
 
     const pdfBytes = await pdfDoc.save();
+    const base64Data = Buffer.from(pdfBytes).toString('base64');
 
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', 'attachment; filename=modified.pdf');
-    res.send(Buffer.from(pdfBytes));
+    res.json({
+      success: true,
+      filename: 'modified.pdf',
+      data: base64Data,
+      mimeType: 'application/pdf',
+      pageCount: pageCount
+    });
     
   } catch (err) {
     console.error(err);
-    res.status(500).send('Internal server error');
+    res.status(500).json({ error: 'Internal server error', details: err.message });
   }
 });
 

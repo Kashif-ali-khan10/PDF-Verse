@@ -19,33 +19,128 @@ const wordToPdf = require('./routes/word-to-pdf')
 const cors = require('cors');
 
 const app = express();
-const path = require('path');
 
 app.use(cors());
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.urlencoded({ extended: true }));
-app.set('views', path.join(__dirname, '/views'))
-app.set('view engine', 'ejs')
-app.use(express.static(path.join(__dirname, 'public')));
-app.use(mergeRouter);
-app.use(splitRouter);
-app.use(editorRouter);
-app.use(watermarkRouter);
-app.use(deleteRouter);
-app.use(pageNoRoute);
-app.use(rotatePdf);
-app.use(pdfToWord);
-app.use(pdfToExcel);
-app.use(pdfToPpt);
-app.use(pdfToPng);
-app.use(pdfToJpg);
-app.use(pdfToJson)
-app.use(pdfToTiff)
-app.use(pdfToTxt);
-app.use(wordToPdf)
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(bodyParser.json({ limit: '50mb' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express.json({ limit: '50mb' }));
+
+// API Routes
+app.use('/api', mergeRouter);
+app.use('/api', splitRouter);
+app.use('/api', editorRouter);
+app.use('/api', watermarkRouter);
+app.use('/api', deleteRouter);
+app.use('/api', pageNoRoute);
+app.use('/api', rotatePdf);
+app.use('/api', pdfToWord);
+app.use('/api', pdfToExcel);
+app.use('/api', pdfToPpt);
+app.use('/api', pdfToPng);
+app.use('/api', pdfToJpg);
+app.use('/api', pdfToJson);
+app.use('/api', pdfToTiff);
+app.use('/api', pdfToTxt);
+app.use('/api', wordToPdf);
+
+// API Documentation endpoint
+app.get('/', (req, res) => {
+  res.json({
+    name: 'PDF-Verse API',
+    version: '1.0.0',
+    description: 'REST API for PDF manipulation and conversion',
+    endpoints: {
+      merge: {
+        method: 'POST',
+        path: '/api/merge',
+        description: 'Merge multiple PDF files into one',
+        body: 'multipart/form-data with field "pdfs" (array of PDF files)'
+      },
+      split: {
+        method: 'POST',
+        path: '/api/split',
+        description: 'Split PDF into multiple files by page ranges',
+        body: 'multipart/form-data with "file" (PDF) and "pageRanges" (e.g., "1-3,4-6")'
+      },
+      'pdf-to-word': {
+        method: 'POST',
+        path: '/api/convert',
+        description: 'Convert PDF to Word document',
+        body: 'multipart/form-data with field "file" (PDF)'
+      },
+      'pdf-to-excel': {
+        method: 'POST',
+        path: '/api/excel-convert',
+        description: 'Convert PDF to Excel file',
+        body: 'multipart/form-data with field "file" (PDF)'
+      },
+      'pdf-to-ppt': {
+        method: 'POST',
+        path: '/api/ppt-convert',
+        description: 'Convert PDF to PowerPoint',
+        body: 'multipart/form-data with field "file" (PDF)'
+      },
+      'pdf-to-png': {
+        method: 'POST',
+        path: '/api/png-convert',
+        description: 'Convert PDF to PNG images',
+        body: 'multipart/form-data with field "file" (PDF)'
+      },
+      'pdf-to-jpg': {
+        method: 'POST',
+        path: '/api/jpg-convert',
+        description: 'Convert PDF to JPG images',
+        body: 'multipart/form-data with field "file" (PDF)'
+      },
+      'pdf-to-json': {
+        method: 'POST',
+        path: '/api/convert-pdf-to-json',
+        description: 'Convert PDF to JSON',
+        body: 'multipart/form-data with field "file" (PDF)'
+      },
+      'pdf-to-txt': {
+        method: 'POST',
+        path: '/api/convert-pdf-to-txt',
+        description: 'Convert PDF to text',
+        body: 'multipart/form-data with field "pdf" (PDF)'
+      },
+      'word-to-pdf': {
+        method: 'POST',
+        path: '/api/wordconvert',
+        description: 'Convert Word document to PDF',
+        body: 'multipart/form-data with field "documents" (Word file)'
+      },
+      watermark: {
+        method: 'POST',
+        path: '/api/add-watermark',
+        description: 'Add text watermark to PDF',
+        body: 'multipart/form-data with "pdf" (PDF) and "watermarkText" (text)'
+      },
+      rotate: {
+        method: 'POST',
+        path: '/api/rotate-pdf-form',
+        description: 'Rotate PDF pages',
+        body: 'multipart/form-data with "file" (PDF) and "rotation" (degrees)'
+      },
+      delete: {
+        method: 'POST',
+        path: '/api/delete-pages',
+        description: 'Delete pages from PDF',
+        body: 'multipart/form-data with "pdfFile" (PDF) and "pagesToDelete" (comma-separated page numbers)'
+      },
+      'add-page-number': {
+        method: 'POST',
+        path: '/api/add-page-number',
+        description: 'Add page numbers to PDF',
+        body: 'multipart/form-data with "pdfFile" (PDF) and options'
+      }
+    },
+    note: 'All endpoints return JSON with base64 encoded file data in the "data" field and filename in "filename" field'
+  });
+});
 
 app.listen(8080, () => {
-  console.log('Server is running on port 8080');
+  console.log('PDF-Verse API Server is running on port 8080');
+  console.log('API Documentation available at http://localhost:8080/');
 });

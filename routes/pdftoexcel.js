@@ -28,49 +28,32 @@ function applyCellStyle(cell, isHeader = false) {
     cell.style(style);
   }
 
-router.get('/pdf-to-excel', (req, res) => {
-    res.render('pdftoexcel', {
-        title: 'Convert PDF to Excel',
-        options: {
-            formats: ['.xlsx', '.xls'],
-            tableOptions: ['Preserve', 'Flatten'],
-        }
-    });
-});
-
 router.post('/excel-convert', upload.single('file'), (req, res) => {
     if (!req.file || req.file.mimetype !== 'application/pdf') {
-        res.status(400).send('Please upload a valid PDF file.');
-        return;
+        return res.status(400).json({ error: 'Please upload a valid PDF file.' });
     }
 
-    const { selectedFormat, selectedPages, tableOption } = req.body;
+    const { selectedFormat = '.xlsx', selectedPages, tableOption } = req.body;
 
     pdf2table.parse(req.file.buffer, (err, rows, pages) => {
         if (err) {
             console.error(err);
-            res.status(500).send('An unexpected error occurred');
-            return;
+            return res.status(500).json({ error: 'An unexpected error occurred', details: err.message });
         }
 
         if (selectedPages && !validateSelectedPages(selectedPages, pages.length)) {
-            res.status(400).send('Invalid selected pages range.');
-            return;
+            return res.status(400).json({ error: 'Invalid selected pages range.' });
         }
-        console.log("Rows before flattening:", rows);
 
-        rows = handleSelectedPages(rows, selectedPages);
+        rows = handleSelectedPages(rows, selectedPages, pages.length);
 
-        
         if (tableOption === 'Flatten') {
             const numberOfColumns = determineNumberOfColumns(rows);
             rows = flattenTables(rows, numberOfColumns);
         }
-        
 
         let workbook = new excel.Workbook();
         let worksheet = workbook.addWorksheet('Sheet 1');
-        console.log(rows);
 
         rows.forEach((row, rowIndex) => {
             row.forEach((cellValue, cellIndex) => {
@@ -79,12 +62,18 @@ router.post('/excel-convert', upload.single('file'), (req, res) => {
               applyCellStyle(cell, rowIndex === 0);
             });
           });
-          
-        res.setHeader('Content-Type', 'application/vnd.openxmlformats');
-        res.setHeader('Content-Disposition', `attachment; filename=output${selectedFormat}`);
 
         workbook.writeToBuffer().then(buffer => {
-            res.send(buffer);
+            const base64Data = buffer.toString('base64');
+            res.json({
+                success: true,
+                filename: `output${selectedFormat}`,
+                data: base64Data,
+                mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            });
+        }).catch(err => {
+            console.error(err);
+            res.status(500).json({ error: 'Error generating Excel file.', details: err.message });
         });
     });
 });

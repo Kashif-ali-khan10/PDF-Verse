@@ -73,7 +73,7 @@ async function showPage(page_no) {
     document.querySelector("#page-loader").style.display = 'none';
     
 
-    convertPageToPNG(page, page_no).then(pngDataUrl => {
+    convertPageToPNG(page_no).then(pngDataUrl => {
         _PNG_STORE[page_no] = pngDataUrl;
     });
 }
@@ -111,14 +111,17 @@ async function downloadZip() {
     }
 
     for (let page_no = 1; page_no <= _TOTAL_PAGES; page_no++) {
-        showPage(page_no);
-
-        while (_PAGE_RENDERING_IN_PROGRESS) {
-            await new Promise(resolve => setTimeout(resolve, 100));
+        // Check if we already have this page converted
+        if (_PNG_STORE[page_no]) {
+            const pngDataUrl = _PNG_STORE[page_no];
+            window.zip.file(`page-${page_no}.png`, pngDataUrl.split(';base64,').pop(), { base64: true });
+        } else {
+            // Convert page if not already converted
+            const pngDataUrl = await convertPageToPNG(page_no);
+            if (pngDataUrl) {
+                window.zip.file(`page-${page_no}.png`, pngDataUrl.split(';base64,').pop(), { base64: true });
+            }
         }
-
-        const pngDataUrl = await convertPageToPNG(page_no);
-        window.zip.file(`page-${page_no}.png`, pngDataUrl.split(';base64,').pop(), { base64: true });
     }
 
     window.zip.generateAsync({ type: 'blob' }).then(function (content) {

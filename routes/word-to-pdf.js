@@ -60,34 +60,34 @@ const customStyles = `
 
 
 
-router.get('/word-to-pdf', (req, res) => {
-    res.render('word-to-pdf');
-});
-
 router.post('/wordconvert', upload.single('documents'), async (req, res) => {
     if (!req.file) {
-        return res.status(400).send('No file uploaded.');
+        return res.status(400).json({ error: 'No file uploaded.' });
     }
 
     try {
         const { value: html } = await mammoth.convertToHtml({ buffer: req.file.buffer });
 
-        const browser = await puppeteer.launch();
+        const browser = await puppeteer.launch({ headless: true });
         const page = await browser.newPage();
         
-        // Combine the custom styles with the converted HTML
         const styledHtml = `<style>${customStyles}</style>${html}`;
         await page.setContent(styledHtml);
 
         const pdfBuffer = await page.pdf();
         await browser.close();
 
-        res.setHeader('Content-Disposition', 'attachment; filename=converted.pdf');
-        res.setHeader('Content-Type', 'application/pdf');
-        res.send(pdfBuffer);
+        const base64Data = pdfBuffer.toString('base64');
+
+        res.json({
+            success: true,
+            filename: 'converted.pdf',
+            data: base64Data,
+            mimeType: 'application/pdf'
+        });
     } catch (error) {
         console.error('Conversion error:', error);
-        res.status(500).send('Error converting document.');
+        res.status(500).json({ error: 'Error converting document.', details: error.message });
     }
 });
 

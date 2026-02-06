@@ -2,19 +2,13 @@ const express = require('express');
 const multer = require('multer');
 const officegen = require('officegen');
 const pdfParse = require('pdf-parse');
-const path = require('path');
 
 const upload = multer({ storage: multer.memoryStorage() });
 const router = express.Router();
 
-router.get('/pdf-to-ppt', (req, res) => {
-  res.render('pdftoppt', { title: 'Convert PDF to PowerPoint' });
-});
-
 router.post('/ppt-convert', upload.single('file'), async (req, res) => {
   if (!req.file || req.file.mimetype !== 'application/pdf') {
-    res.status(400).send('Please upload a valid PDF file.');
-    return;
+    return res.status(400).json({ error: 'Please upload a valid PDF file.' });
   }
 
   try {
@@ -30,12 +24,26 @@ router.post('/ppt-convert', upload.single('file'), async (req, res) => {
       slide.addText(pageText, { x: 0, y: 0, w: '100%', h: '100%' });
     });
 
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation');
-    res.setHeader('Content-Disposition', 'attachment; filename=output.pptx');
-    pptx.generate(res);
+    pptx.generate({
+      'type': 'nodebuffer'
+    }, function(err, buffer) {
+      if (err) {
+        console.error(err);
+        return res.status(500).json({ error: 'An error occurred while processing the PDF file.', details: err.message });
+      }
+      
+      const base64Data = buffer.toString('base64');
+      res.json({
+        success: true,
+        filename: 'output.pptx',
+        data: base64Data,
+        mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        slideCount: pages.length
+      });
+    });
   } catch (err) {
     console.error(err);
-    res.status(500).send('An error occurred while processing the PDF file.');
+    res.status(500).json({ error: 'An error occurred while processing the PDF file.', details: err.message });
   }
 });
 

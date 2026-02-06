@@ -1,15 +1,50 @@
 const express = require('express');
 const multer = require('multer');
-// const pdf2img = require('pdf-img-convert-web');
+const pdf2img = require('pdf-img-convert-web');
 const JSZip = require('jszip');
 const router = express.Router();
 
 const upload = multer({ storage: multer.memoryStorage() });
 
-router.get('/pdf-to-jpg', (req, res) => {
-  res.render('pdf-to-jpg', { title: 'Convert PDF to JPG Images' });
-});
+router.post('/jpg-convert', upload.single('file'), async (req, res) => {
+  if (!req.file || req.file.mimetype !== 'application/pdf') {
+    return res.status(400).json({ error: 'Please upload a valid PDF file.' });
+  }
 
-// The controller part is done from Vanilla JS only because Vercel deployment is causing problem with Nodejs Canvas for NodeJs code reffer to pdf-to-png.js code.
+  try {
+    const pdfBuffer = req.file.buffer;
+
+    // Convert PDF to images
+    const outputImages = await pdf2img.convert(pdfBuffer, {
+      width: 800,
+      base64: true,
+    });
+
+    // Create a zip file containing the images
+    const zip = new JSZip();
+
+    outputImages.forEach((img, i) => {
+      let imageData = img;
+      if (typeof img === 'string' && img.includes('base64,')) {
+        imageData = img.split('base64,')[1];
+      }
+      zip.file(`output${i}.jpg`, imageData, { base64: true });
+    });
+
+    const zipBuffer = await zip.generateAsync({ type: 'nodebuffer' });
+    const base64Data = zipBuffer.toString('base64');
+
+    res.json({
+      success: true,
+      filename: 'images.zip',
+      data: base64Data,
+      mimeType: 'application/zip',
+      pageCount: outputImages.length
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'An error occurred while processing the PDF file.', details: err.message });
+  }
+});
 
 module.exports = router;
